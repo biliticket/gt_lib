@@ -3,6 +3,8 @@
 // Copyright (C) 2024 Woshiluo Luo <woshiluo.luo@outlook.com>
 // Distributed under terms of the GNU AGPLv3+ license.
 //
+//
+use hex_literal::hex;
 
 pub struct W {
     key: String,
@@ -14,16 +16,17 @@ pub struct W {
     c: String,
     #[allow(dead_code)]
     s: String,
-    aeskey: Vec<u8>,
+    aeskey: String,
 }
 
-fn gen_aes_key() -> Vec<u8> {
-    // Seems it just gen a 8 bytes-long random string
-    use rand::prelude::*;
-    let mut rng = rand::thread_rng();
-    let x: u64 = rng.gen();
-    x.to_ne_bytes().into()
-}
+// fn gen_aes_key() -> Vec<u8> {
+//     // Seems it just gen a 8 bytes-long random string
+//     // use rand::prelude::*;
+//     // let mut rng = rand::thread_rng();
+//     // let x: u64 = rng.gen();
+//     // x.to_ne_bytes().into()
+//     "82253e788a7b95e9".as_bytes()
+// }
 
 fn _jgh(e: i32) -> char {
     const T: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()";
@@ -41,7 +44,7 @@ struct JJMValue {
 fn _jjm(e: &[u8]) -> JJMValue {
     let t = |f: i32, u: i32| -> i32 {
         let mut res = 0;
-        for r in (0..23).rev() {
+        for r in (0..24).rev() {
             if _jiy(u, r) == 1 {
                 res = (res << 1) + _jiy(f, r)
             }
@@ -77,8 +80,7 @@ fn _jjm(e: &[u8]) -> JJMValue {
                     _jgh(t(c, 19220)),
                 );
                 r = "."
-            }
-            if u == 2 {
+            } else if u == 1 {
                 let c: i32 = e[s] << 16;
                 n = format!("{}{}{}", n, _jgh(t(c, 7274496)), _jgh(t(c, 9483264)),);
                 r = ".."
@@ -97,14 +99,6 @@ fn enc(e: &[u8]) -> String {
     format!("{}{}", t.res, t.end)
 }
 
-// source: https://stackoverflow.com/questions/52987181/how-can-i-convert-a-hex-string-to-a-u8-slice
-fn decode_hex(s: &str) -> Result<Vec<u8>, std::num::ParseIntError> {
-    (0..s.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
-        .collect()
-}
-
 // source: https://github.com/magiclen/rust-magiccrypt/blob/1dc700e389d46d0999409dbfd38d37d23117c03f/src/functions.rs#L17
 #[inline]
 fn get_aes_cipher_len(data_length: usize) -> usize {
@@ -115,8 +109,8 @@ fn rsa(data: &[u8]) -> Vec<u8> {
     use rsa::Pkcs1v15Encrypt;
 
     let mut rng = rand::thread_rng();
-    let k = decode_hex("00C1E3934D1614465B33053E7F48EE4EC87B14B95EF88947713D25EECBFF7E74C7977D02DC1D9451F79DD5D1C10C29ACB6A9B4D6FB7D0A0279B6719E1772565F09AF627715919221AEF91899CAE08C0D686D748B20A3603BE2318CA6BC2B59706592A9219D0BF05C9F65023A21D2330807252AE0066D59CEEFA5F2748EA80BAB81").unwrap();
-    let e = decode_hex("010001").unwrap();
+    let k = hex!("00C1E3934D1614465B33053E7F48EE4EC87B14B95EF88947713D25EECBFF7E74C7977D02DC1D9451F79DD5D1C10C29ACB6A9B4D6FB7D0A0279B6719E1772565F09AF627715919221AEF91899CAE08C0D686D748B20A3603BE2318CA6BC2B59706592A9219D0BF05C9F65023A21D2330807252AE0066D59CEEFA5F2748EA80BAB81");
+    let e = hex!("010001");
     let k = rsa::BigUint::from_bytes_be(&k);
     let e = rsa::BigUint::from_bytes_be(&e);
     let pub_key = rsa::RsaPublicKey::new(k, e).unwrap();
@@ -127,40 +121,33 @@ fn rsa(data: &[u8]) -> Vec<u8> {
 
 impl W {
     fn aes(&self, data: &[u8]) -> Vec<u8> {
-        use aes::cipher::generic_array::GenericArray;
-        use aes::Aes128;
-        use block_modes::{block_padding::Pkcs7, BlockMode, Cbc};
-        type Aes128Cbc = Cbc<Aes128, Pkcs7>;
-        let encode_key = hex::encode(&self.aeskey);
-        let key = GenericArray::from_slice(encode_key.as_bytes());
-        let iv = GenericArray::from([0u8; 16]);
-        let cipher = Aes128Cbc::new_fix(key, &iv);
+        use aes::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
+        type Aes128CbcEnc = cbc::Encryptor<aes::Aes128>;
+        let encode_key = &self.aeskey.as_bytes();
+        let key = aes::cipher::generic_array::GenericArray::from_slice(encode_key);
+        let iv = "0000000000000000".as_bytes();
+        let iv = aes::cipher::generic_array::GenericArray::from_slice(iv);
 
-        let data_length = data.len();
+        let data_len = data.len();
+        let target_len = get_aes_cipher_len(data_len);
+        let mut buf = Vec::with_capacity(get_aes_cipher_len(target_len));
+        buf.resize(target_len, 0);
+        buf[..data_len].copy_from_slice(data);
+        let ct = Aes128CbcEnc::new(key, iv)
+            .encrypt_padded_mut::<Pkcs7>(&mut buf, data_len)
+            .unwrap();
 
-        let final_length = get_aes_cipher_len(data_length);
-
-        let mut final_result = data.to_vec();
-
-        final_result.reserve_exact(final_length - data_length);
-
-        unsafe {
-            final_result.set_len(final_length);
-        }
-
-        cipher.encrypt(&mut final_result, data_length).unwrap();
-
-        final_result
+        ct.into()
     }
 
-    pub fn new(key: &str, gt: &str, challenge: &str, c: &str, s: &str) -> Self {
+    pub fn new(key: &str, gt: &str, challenge: &str, c: &str, s: &str, rt: &str) -> Self {
         Self {
             key: key.into(),
             gt: gt.into(),
             challenge: challenge.into(),
             c: c.into(),
             s: s.into(),
-            aeskey: gen_aes_key(),
+            aeskey: rt.into(),
         }
     }
     pub fn calculate(&self) -> String {
@@ -169,7 +156,7 @@ impl W {
         let x: u64 = 4000 + rng.gen_range(0..=500);
         let parma = format!(include_str!("data.json"), passtime = x, e = self.key);
 
-        let u = rsa(&self.aeskey);
+        let u = rsa(self.aeskey.as_bytes());
         let h = self.aes(parma.as_bytes());
         let w = format!("{}{}", enc(&h), hex::encode(u));
 
