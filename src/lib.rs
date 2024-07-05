@@ -161,13 +161,14 @@ impl W {
 
         final_result
     }
-    pub fn new(key: String, gt: String, challenge: String, c: String, s: String) -> Self {
+
+    pub fn new(key: &str, gt: &str, challenge: &str, c: &str, s: &str) -> Self {
         Self {
-            key,
-            gt,
-            challenge,
-            c,
-            s,
+            key: key.into(),
+            gt: gt.into(),
+            challenge: challenge.into(),
+            c: c.into(),
+            s: s.into(),
             aeskey: gen_aes_key(),
         }
     }
