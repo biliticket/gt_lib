@@ -36,7 +36,7 @@ fn gen_aes_key() -> Vec<u8> {
 }
 
 fn _jgh(e: i32) -> char {
-    const T: &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()";
+    const T: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()";
     T.chars().nth(e as usize).unwrap_or('.')
 }
 
@@ -66,7 +66,7 @@ fn _jjm(e: &[u8]) -> JJMValue {
     let mut s = 0;
     while s < a {
         if s + 2 < a {
-            let c: i32 = e[s] << 16 + (e[s + 1] << 8) + e[s + 2];
+            let c: i32 = (e[s] << 16) + (e[s + 1] << 8) + e[s + 2];
             n = format!(
                 "{}{}{}{}{}",
                 n,
@@ -78,7 +78,7 @@ fn _jjm(e: &[u8]) -> JJMValue {
         } else {
             let u = a % 3;
             if u == 2 {
-                let c: i32 = e[s] << 16 + (e[s + 1] << 8);
+                let c: i32 = (e[s] << 16) + (e[s + 1] << 8);
                 n = format!(
                     "{}{}{}{}",
                     n,
