@@ -126,7 +126,7 @@ impl<'a> W<'a> {
 
         let data_len = data.len();
         let target_len = get_aes_cipher_len(data_len);
-        let mut buf = Vec::with_capacity(get_aes_cipher_len(target_len));
+        let mut buf = Vec::with_capacity(target_len);
 
         buf.resize(target_len, 0);
         buf[..data_len].copy_from_slice(data);
