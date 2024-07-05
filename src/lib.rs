@@ -6,17 +6,17 @@
 //
 use hex_literal::hex;
 
-pub struct W {
-    key: String,
+pub struct W<'a> {
+    key: &'a str,
     #[allow(dead_code)]
-    gt: String,
+    gt: &'a str,
     #[allow(dead_code)]
-    challenge: String,
+    challenge: &'a str,
     #[allow(dead_code)]
-    c: String,
+    c: &'a str,
     #[allow(dead_code)]
-    s: String,
-    aeskey: String,
+    s: &'a str,
+    aeskey: &'a str,
 }
 
 // fn gen_aes_key() -> Vec<u8> {
@@ -28,20 +28,18 @@ pub struct W {
 //     "82253e788a7b95e9".as_bytes()
 // }
 
+#[inline]
 fn _jgh(e: i32) -> char {
     const T: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()";
     T.chars().nth(e as usize).unwrap_or('.')
 }
 
+#[inline]
 fn _jiy(e: i32, t: i32) -> i32 {
     (e >> t) & 1
 }
 
-struct JJMValue {
-    res: String,
-    end: String,
-}
-fn _jjm(e: &[u8]) -> JJMValue {
+fn _jjm(e: &[u8]) -> String {
     let t = |f: i32, u: i32| -> i32 {
         let mut res = 0;
         for r in (0..24).rev() {
@@ -88,15 +86,12 @@ fn _jjm(e: &[u8]) -> JJMValue {
         }
         s += 3
     }
-    JJMValue {
-        res: n,
-        end: r.to_string(),
-    }
+    format!("{}{}", n, r)
 }
 
+#[inline]
 fn enc(e: &[u8]) -> String {
-    let t = _jjm(e);
-    format!("{}{}", t.res, t.end)
+    _jjm(e)
 }
 
 // source: https://github.com/magiclen/rust-magiccrypt/blob/1dc700e389d46d0999409dbfd38d37d23117c03f/src/functions.rs#L17
@@ -119,10 +114,11 @@ fn rsa(data: &[u8]) -> Vec<u8> {
         .expect("failed to encrypt")
 }
 
-impl W {
+impl<'a> W<'a> {
     fn aes(&self, data: &[u8]) -> Vec<u8> {
         use aes::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
         type Aes128CbcEnc = cbc::Encryptor<aes::Aes128>;
+
         let encode_key = &self.aeskey.as_bytes();
         let key = aes::cipher::generic_array::GenericArray::from_slice(encode_key);
         let iv = "0000000000000000".as_bytes();
@@ -131,8 +127,10 @@ impl W {
         let data_len = data.len();
         let target_len = get_aes_cipher_len(data_len);
         let mut buf = Vec::with_capacity(get_aes_cipher_len(target_len));
+
         buf.resize(target_len, 0);
         buf[..data_len].copy_from_slice(data);
+
         let ct = Aes128CbcEnc::new(key, iv)
             .encrypt_padded_mut::<Pkcs7>(&mut buf, data_len)
             .unwrap();
@@ -140,16 +138,24 @@ impl W {
         ct.into()
     }
 
-    pub fn new(key: &str, gt: &str, challenge: &str, c: &str, s: &str, rt: &str) -> Self {
+    pub fn new(
+        key: &'a str,
+        gt: &'a str,
+        challenge: &'a str,
+        c: &'a str,
+        s: &'a str,
+        rt: &'a str,
+    ) -> Self {
         Self {
-            key: key.into(),
-            gt: gt.into(),
-            challenge: challenge.into(),
-            c: c.into(),
-            s: s.into(),
-            aeskey: rt.into(),
+            key,
+            gt,
+            challenge,
+            c,
+            s,
+            aeskey: rt,
         }
     }
+
     pub fn calculate(&self) -> String {
         use rand::prelude::*;
         let mut rng = rand::thread_rng();
