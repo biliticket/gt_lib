@@ -37,7 +37,7 @@ fn gen_aes_key() -> Vec<u8> {
 
 fn _jgh(e: i32) -> char {
     const T: &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()";
-    T.chars().nth(e as usize).unwrap_or_else(|| '.' as char)
+    T.chars().nth(e as usize).unwrap_or('.')
 }
 
 fn _jiy(e: i32, t: i32) -> i32 {
@@ -59,10 +59,7 @@ fn _jjm(e: &[u8]) -> JJMValue {
         res
     };
 
-    let e = e
-        .into_iter()
-        .map(|x| x.clone() as i32)
-        .collect::<Vec<i32>>();
+    let e = e.iter().map(|x| *x as i32).collect::<Vec<i32>>();
     let mut n: String = String::new();
     let mut r = "";
     let a = e.len();
@@ -107,7 +104,7 @@ fn _jjm(e: &[u8]) -> JJMValue {
 
 fn enc(e: &[u8]) -> String {
     let t = _jjm(e);
-    return format!("{}{}", t.res, t.end);
+    format!("{}{}", t.res, t.end)
 }
 
 // source: https://stackoverflow.com/questions/52987181/how-can-i-convert-a-hex-string-to-a-u8-slice
@@ -133,11 +130,9 @@ fn rsa(data: &[u8]) -> Vec<u8> {
     let k = rsa::BigUint::from_bytes_be(&k);
     let e = rsa::BigUint::from_bytes_be(&e);
     let pub_key = rsa::RsaPublicKey::new(k, e).unwrap();
-    let enc_data = pub_key
-        .encrypt(&mut rng, Pkcs1v15Encrypt, &data[..])
-        .expect("failed to encrypt");
-
-    enc_data
+    pub_key
+        .encrypt(&mut rng, Pkcs1v15Encrypt, data)
+        .expect("failed to encrypt")
 }
 
 impl W {
