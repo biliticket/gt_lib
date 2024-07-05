@@ -18,16 +18,6 @@ pub struct W {
 }
 
 fn gen_aes_key() -> Vec<u8> {
-    //    @logger.catch
-    //    def Key(self) -> bytes:
-    //        var = []
-    //        for _ in range(4):
-    //            random_value = int(65536 * (1 + random.random()))
-    //            hex = format(random_value, "04x")[1:]
-    //            var.append(hex)
-    //        dist = ("".join(var)).encode()
-    //        return dist
-
     // Seems it just gen a 8 bytes-long random string
     use rand::prelude::*;
     let mut rng = rand::thread_rng();
@@ -141,7 +131,8 @@ impl W {
         use aes::Aes128;
         use block_modes::{block_padding::Pkcs7, BlockMode, Cbc};
         type Aes128Cbc = Cbc<Aes128, Pkcs7>;
-        let key = GenericArray::from_slice(&self.aeskey[..]);
+        let encode_key = hex::encode(&self.aeskey);
+        let key = GenericArray::from_slice(encode_key.as_bytes());
         let iv = GenericArray::from([0u8; 16]);
         let cipher = Aes128Cbc::new_fix(key, &iv);
 
